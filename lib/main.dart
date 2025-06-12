@@ -5,11 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 import 'providers/theme_provider.dart';
 import 'models/theme_model.dart';
+import 'models/arxiv_paper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(ThemeModelAdapter());
+  Hive.registerAdapter(ArxivPaperAdapter());
   runApp(const MainApp());
 }
 

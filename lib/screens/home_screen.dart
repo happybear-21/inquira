@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:another_flushbar/flushbar.dart';
 import '../models/arxiv_paper.dart';
 import '../services/arxiv_service.dart';
 import '../widgets/paper_card.dart';
@@ -13,7 +14,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final ArxivService _arxivService = ArxivService();
   final int _batchSize = 10;
   List<ArxivPaper> _papers = [];
@@ -21,26 +22,42 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isLoadingMore = false;
   int _currentIndex = 0;
   int _loadedCount = 0;
-  late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
+  AnimationController? _animationController;
+  Animation<Offset>? _slideAnimation;
   bool _isDragging = false;
+  bool _isAnimating = false;
   late Box<ArxivPaper> _favoritesBox;
+  // Track swipe direction: 1 for right, -1 for left
+  int _swipeDirection = 1;
 
   @override
   void initState() {
     super.initState();
     _initHiveAndLoad();
+  }
+
+  Future<void> _runSwipeAnimation(int direction, VoidCallback onCompleted) async {
+    if (_isAnimating) return;
+    _isAnimating = true;
+    _animationController?.dispose();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 350),
     );
     _slideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(1.5, 0),
+      end: Offset(direction > 0 ? 1.5 : -1.5, 0),
     ).animate(CurvedAnimation(
-      parent: _animationController,
+      parent: _animationController!,
       curve: Curves.easeOut,
     ));
+    _swipeDirection = direction;
+    await _animationController!.forward();
+    onCompleted();
+    _animationController?.dispose();
+    _animationController = null;
+    _slideAnimation = null;
+    _isAnimating = false;
   }
 
   Future<void> _initHiveAndLoad() async {
@@ -51,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _animationController?.dispose();
     super.dispose();
   }
 
@@ -81,33 +98,71 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _onSwipeRight() {
-    if (_currentIndex < _papers.length) {
-      // Save to favorites
-      final paper = _papers[_currentIndex];
-      if (!_favoritesBox.values.any((fav) => fav.id == paper.id)) {
-        _favoritesBox.add(paper);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Added to favorites!')),
-        );
+  void _onSwipeRight() async {
+    if (_isAnimating || _currentIndex >= _papers.length) return;
+    final paper = _papers[_currentIndex];
+    bool added = false;
+    String? error;
+    if (!_favoritesBox.values.any((fav) => fav.id == paper.id)) {
+      try {
+        await _favoritesBox.add(paper);
+        added = true;
+      } catch (e) {
+        error = e.toString();
+        print('Error adding to favorites: $error');
       }
-      _animationController.forward().then((_) {
-        setState(() {
-          _currentIndex++;
-          _animationController.reset();
-        });
-        _maybeLoadMore();
-      });
     }
-  }
-
-  void _onSwipeLeft() {
-    if (_currentIndex < _papers.length) {
+    _runSwipeAnimation(1, () {
       setState(() {
         _currentIndex++;
       });
       _maybeLoadMore();
-    }
+      _showCustomToast(
+        context,
+        error != null ? 'Error adding to favorites' : (added ? 'Added to favorites!' : 'Already in favorites'),
+        icon: error != null ? Icons.error : Icons.favorite,
+        color: error != null ? Colors.red : Colors.green,
+      );
+    });
+  }
+
+  void _onSwipeLeft() {
+    if (_isAnimating || _currentIndex >= _papers.length) return;
+    _runSwipeAnimation(-1, () {
+      setState(() {
+        _currentIndex++;
+      });
+      _maybeLoadMore();
+      _showCustomToast(
+        context,
+        'Skipped',
+        icon: Icons.close,
+        color: Colors.red,
+      );
+    });
+  }
+
+  void _showCustomToast(BuildContext context, String message, {required IconData icon, required Color color}) {
+    Flushbar(
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(16),
+      backgroundColor: color.withOpacity(0.95),
+      icon: Icon(icon, color: Colors.white, size: 28),
+      messageText: Text(
+        message,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      duration: const Duration(milliseconds: 1200),
+      flushbarPosition: FlushbarPosition.TOP,
+      animationDuration: const Duration(milliseconds: 400),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ).show(context);
   }
 
   void _maybeLoadMore() {
@@ -133,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     'Inquira',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                   Row(
@@ -212,16 +268,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         _onSwipeLeft();
                                       }
                                     },
-                                    child: SlideTransition(
-                                      position: _slideAnimation,
-                                      child: Opacity(
-                                        opacity: 1.0, // Ensure top card is fully opaque
-                                        child: PaperCard(
-                                          paper: _papers[_currentIndex],
-                                          isFront: true,
-                                        ),
-                                      ),
-                                    ),
+                                    child: (_slideAnimation != null && _animationController != null)
+                                        ? SlideTransition(
+                                            position: _slideAnimation!,
+                                            child: Opacity(
+                                              opacity: 1.0, // Ensure top card is fully opaque
+                                              child: PaperCard(
+                                                paper: _papers[_currentIndex],
+                                                isFront: true,
+                                              ),
+                                            ),
+                                          )
+                                        : Opacity(
+                                            opacity: 1.0,
+                                            child: PaperCard(
+                                              paper: _papers[_currentIndex],
+                                              isFront: true,
+                                            ),
+                                          ),
                                   ),
                                 ),
                               if (_isLoadingMore)
