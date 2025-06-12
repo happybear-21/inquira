@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:xml/xml.dart';
 import '../models/arxiv_paper.dart';
 
 class ArxivService {
@@ -23,75 +23,53 @@ class ArxivService {
 
     if (response.statusCode == 200) {
       final xmlString = response.body;
-      // Parse XML response
+      final xmlDoc = XmlDocument.parse(xmlString);
+      final entries = xmlDoc.findAllElements('entry');
       final papers = <ArxivPaper>[];
-      final entries = _parseXmlResponse(xmlString);
-      
-      for (var entry in entries) {
+      for (final entry in entries) {
         try {
-          papers.add(ArxivPaper.fromJson(entry));
+          // Extract authors
+          final authors = entry.findElements('author').map((authorElem) {
+            final nameElem = authorElem.findElements('name').firstOrNull;
+            return {'name': nameElem?.text ?? ''};
+          }).toList();
+
+          // Extract links
+          final links = entry.findElements('link').map((linkElem) {
+            return {
+              '@href': linkElem.getAttribute('href') ?? '',
+              '@title': linkElem.getAttribute('title') ?? '',
+            };
+          }).toList();
+
+          // Extract categories
+          final categories = entry.findElements('category').map((catElem) {
+            return {'@term': catElem.getAttribute('term') ?? ''};
+          }).toList();
+
+          // Extract primary category (namespace aware)
+          final primaryCatElem = entry.getElement('arxiv:primary_category', namespace: '*');
+          final primaryCategory = primaryCatElem?.getAttribute('term') ?? '';
+
+          final entryMap = {
+            'id': entry.getElement('id')?.text ?? '',
+            'title': entry.getElement('title')?.text ?? '',
+            'summary': entry.getElement('summary')?.text ?? '',
+            'published': entry.getElement('published')?.text ?? '',
+            'author': authors,
+            'link': links,
+            'category': categories,
+            'arxiv:primary_category': {'@term': primaryCategory},
+          };
+
+          papers.add(ArxivPaper.fromJson({'entry': entryMap}));
         } catch (e) {
           print('Error parsing paper: $e');
         }
       }
-      
       return papers;
     } else {
       throw Exception('Failed to load papers');
     }
   }
-
-  List<Map<String, dynamic>> _parseXmlResponse(String xmlString) {
-    // Simple XML parsing for demonstration
-    // In a production app, you should use a proper XML parser
-    final entries = <Map<String, dynamic>>[];
-    final entryPattern = RegExp(r'<entry>(.*?)</entry>', dotAll: true);
-    final matches = entryPattern.allMatches(xmlString);
-
-    for (var match in matches) {
-      final entryXml = match.group(1)!;
-      final entry = <String, dynamic>{};
-      
-      // Extract basic fields
-      entry['id'] = _extractXmlValue(entryXml, 'id');
-      entry['title'] = _extractXmlValue(entryXml, 'title');
-      entry['summary'] = _extractXmlValue(entryXml, 'summary');
-      entry['published'] = _extractXmlValue(entryXml, 'published');
-      
-      // Extract authors
-      final authorPattern = RegExp(r'<author>.*?<name>(.*?)</name>.*?</author>', dotAll: true);
-      final authorMatches = authorPattern.allMatches(entryXml);
-      entry['author'] = authorMatches.map((m) => {'name': m.group(1)}).toList();
-      
-      // Extract links
-      final linkPattern = RegExp(r'<link.*?href="(.*?)".*?title="(.*?)".*?>', dotAll: true);
-      final linkMatches = linkPattern.allMatches(entryXml);
-      entry['link'] = linkMatches.map((m) => {
-        '@href': m.group(1),
-        '@title': m.group(2),
-      }).toList();
-      
-      // Extract categories
-      final categoryPattern = RegExp(r'<category.*?term="(.*?)".*?>', dotAll: true);
-      final categoryMatches = categoryPattern.allMatches(entryXml);
-      entry['category'] = categoryMatches.map((m) => {'@term': m.group(1)}).toList();
-      
-      // Extract primary category
-      final primaryCategoryPattern = RegExp(r'<arxiv:primary_category.*?term="(.*?)".*?>', dotAll: true);
-      final primaryCategoryMatch = primaryCategoryPattern.firstMatch(entryXml);
-      if (primaryCategoryMatch != null) {
-        entry['arxiv:primary_category'] = {'@term': primaryCategoryMatch.group(1)};
-      }
-      
-      entries.add(entry);
-    }
-    
-    return entries;
-  }
-
-  String _extractXmlValue(String xml, String tag) {
-    final pattern = RegExp('<$tag>(.*?)</$tag>', dotAll: true);
-    final match = pattern.firstMatch(xml);
-    return match?.group(1)?.trim() ?? '';
-  }
-} 
+}
