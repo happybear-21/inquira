@@ -71,6 +71,26 @@ class _PaperCardState extends State<PaperCard> {
     }
   }
 
+  String _cleanText(String text) {
+    return text
+        .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+        .replaceAll(RegExp(r'\n+'), ' ') // Replace multiple newlines with single space
+        .replaceAll(RegExp(r'\r+'), ' ') // Replace carriage returns with space
+        .replaceAll(RegExp(r'\t+'), ' ') // Replace tabs with space
+        .trim(); // Remove leading/trailing whitespace
+  }
+
+  String _formatAuthors(List<String> authors) {
+    if (authors.isEmpty) return '';
+    if (authors.length == 1) return authors[0];
+    if (authors.length == 2) return '${authors[0]} and ${authors[1]}';
+    return '${authors.sublist(0, authors.length - 1).join(", ")} and ${authors.last}';
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('MMM d, y').format(date);
+  }
+
   @override
   Widget build(BuildContext context) {
     return widget.isCompact ? _buildCompactCard(context) : _buildFullCard(context);
@@ -88,7 +108,7 @@ class _PaperCardState extends State<PaperCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.paper.title,
+              _cleanText(widget.paper.title),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -97,7 +117,7 @@ class _PaperCardState extends State<PaperCard> {
             ),
             const SizedBox(height: 4),
             Text(
-              widget.paper.authors.join(', '),
+              _formatAuthors(widget.paper.authors),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
@@ -128,101 +148,76 @@ class _PaperCardState extends State<PaperCard> {
   }
 
   Widget _buildFullCard(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).cardColor,
-                Theme.of(context).cardColor.withOpacity(0.8),
-              ],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.paper.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _cleanText(widget.paper.title),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  children: widget.paper.categories.map((category) {
-                    return Chip(
-                      label: Text(category),
-                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.paper.authors.join(', '),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: widget.paper.categories.map((category) {
+                return Chip(
+                  label: Text(_cleanText(category)),
+                  backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _formatAuthors(widget.paper.authors),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  _cleanText(widget.paper.abstract),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Text(
-                      widget.paper.abstract.replaceAll(RegExp(r'\s+'), ' ').trim(),
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      DateFormat('MMM d, y').format(widget.paper.publishedDate),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDate(widget.paper.publishedDate),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
                       ),
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.share),
+                      label: const Text('Share'),
+                      onPressed: _sharePaper,
                     ),
-                    Row(
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.share),
-                          label: const Text('Share'),
-                          onPressed: _sharePaper,
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton.icon(
-                          icon: const Icon(Icons.article),
-                          label: const Text('Read Paper'),
-                          onPressed: () => _launchUrl(widget.paper.pdfUrl),
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      icon: const Icon(Icons.article),
+                      label: const Text('Read Paper'),
+                      onPressed: () => _launchUrl(widget.paper.pdfUrl),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

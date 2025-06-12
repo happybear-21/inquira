@@ -66,30 +66,75 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<bool> _showDeleteConfirmation(ArxivPaper paper) async {
-    final confirmed = await showDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove from Favorites?'),
-        content: Text('Are you sure you want to remove "${paper.title}" from your favorites?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Remove from Favorites',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+          content: Text(
+            'Are you sure you want to remove this paper from your favorites?',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
             ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
     );
 
-    if (confirmed == true) {
-      await _removeFromFavorites(paper);
-      return true;
+    if (result == true) {
+      try {
+        await _removeFromFavorites(paper);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed "${paper.title}" from favorites'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+        return true;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to remove paper: ${e.toString()}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+        return false;
+      }
     }
     return false;
   }
