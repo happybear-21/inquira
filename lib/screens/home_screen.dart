@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isDragging = false;
   bool _isAnimating = false;
   late Box<ArxivPaper> _favoritesBox;
+  bool _isFavoritesBoxReady = false;
   // Track swipe direction: 1 for right, -1 for left
   int _swipeDirection = 1;
 
@@ -61,8 +62,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _initHiveAndLoad() async {
-    _favoritesBox = await Hive.openBox<ArxivPaper>('favorites');
-    _loadPapers();
+    try {
+      _favoritesBox = await Hive.openBox<ArxivPaper>('favorites');
+      setState(() {
+        _isFavoritesBoxReady = true;
+      });
+      _loadPapers();
+    } catch (e) {
+      print('Error opening favorites box: $e');
+      setState(() {
+        _isFavoritesBoxReady = false;
+      });
+    }
   }
 
 
@@ -99,7 +110,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onSwipeRight() async {
-    if (_isAnimating || _currentIndex >= _papers.length) return;
+    if (_isAnimating || _currentIndex >= _papers.length || !_isFavoritesBoxReady) {
+      if (!_isFavoritesBoxReady) {
+        _showCustomToast(
+          context,
+          'Favorites not ready',
+          icon: Icons.error,
+          color: Colors.red,
+        );
+      }
+      return;
+    }
     final paper = _papers[_currentIndex];
     bool added = false;
     String? error;
@@ -107,10 +128,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       try {
         await _favoritesBox.add(paper);
         added = true;
+        print('Added to favorites: ${paper.title}');
       } catch (e) {
         error = e.toString();
         print('Error adding to favorites: $error');
       }
+    } else {
+      print('Already in favorites: ${paper.title}');
     }
     _runSwipeAnimation(1, () {
       setState(() {
@@ -127,7 +151,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onSwipeLeft() {
-    if (_isAnimating || _currentIndex >= _papers.length) return;
+    if (_isAnimating || _currentIndex >= _papers.length || !_isFavoritesBoxReady) {
+      if (!_isFavoritesBoxReady) {
+        _showCustomToast(
+          context,
+          'Favorites not ready',
+          icon: Icons.error,
+          color: Colors.red,
+        );
+      }
+      return;
+    }
     _runSwipeAnimation(-1, () {
       setState(() {
         _currentIndex++;
@@ -189,143 +223,123 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                    ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.favorite),
-                        tooltip: 'Favorites',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FavoritesScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SettingsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _papers.isEmpty
-                      ? const Center(
-                          child: Text('No papers available'),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Only show two cards: the top (front) and the next (back)
-                              if (_currentIndex + 1 < _papers.length)
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 350),
-                                  curve: Curves.easeOut,
-                                  top: 30,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: AnimatedScale(
-                                    duration: const Duration(milliseconds: 350),
-                                    scale: 0.92,
-                                    curve: Curves.easeOut,
-                                    child: PaperCard(
-                                      paper: _papers[_currentIndex + 1],
-                                      isFront: false,
-                                    ),
-                                  ),
-                                ),
-                              if (_currentIndex < _papers.length)
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 350),
-                                  curve: Curves.easeOut,
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: GestureDetector(
-                                    onHorizontalDragEnd: (details) {
-                                      if (details.primaryVelocity! > 0) {
-                                        _onSwipeRight();
-                                      } else if (details.primaryVelocity! < 0) {
-                                        _onSwipeLeft();
-                                      }
-                                    },
-                                    child: (_slideAnimation != null && _animationController != null)
-                                        ? SlideTransition(
-                                            position: _slideAnimation!,
-                                            child: Opacity(
-                                              opacity: 1.0, // Ensure top card is fully opaque
-                                              child: PaperCard(
-                                                paper: _papers[_currentIndex],
-                                                isFront: true,
-                                              ),
-                                            ),
-                                          )
-                                        : Opacity(
-                                            opacity: 1.0,
-                                            child: PaperCard(
-                                              paper: _papers[_currentIndex],
-                                              isFront: true,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              if (_isLoadingMore)
-                                const Positioned(
-                                  bottom: 16,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(child: CircularProgressIndicator()),
-                                ),
-                            ],
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                      tooltip: 'Favorites',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FavoritesScreen(),
                           ),
-                        ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildActionButton(
-                    icon: Icons.close,
-                    color: Colors.red,
-                    onTap: () {
-                      _onSwipeLeft();
-                    },
-                  ),
-                  _buildActionButton(
-                    icon: Icons.favorite,
-                    color: Colors.green,
-                    onTap: () {
-                      _onSwipeRight();
-                    },
-                  ),
-                ],
-              ),
+          ),
+          Expanded(
+            child: (!_isFavoritesBoxReady)
+                ? const Center(child: CircularProgressIndicator())
+                : _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Stack(
+                        children: [
+                          // Card stack and swipe UI
+                          if (_currentIndex < _papers.length)
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: GestureDetector(
+                                onHorizontalDragEnd: (details) {
+                                  if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
+                                    _onSwipeRight();
+                                  } else if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
+                                    _onSwipeLeft();
+                                  }
+                                },
+                                child: (_slideAnimation != null && _animationController != null)
+                                    ? SlideTransition(
+                                        position: _slideAnimation!,
+                                        child: Opacity(
+                                          opacity: 1.0, // Ensure top card is fully opaque
+                                          child: PaperCard(
+                                            paper: _papers[_currentIndex],
+                                            isFront: true,
+                                          ),
+                                        ),
+                                      )
+                                    : Opacity(
+                                        opacity: 1.0,
+                                        child: PaperCard(
+                                          paper: _papers[_currentIndex],
+                                          isFront: true,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          if (_currentIndex + 1 < _papers.length)
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 20.0),
+                                child: PaperCard(
+                                  paper: _papers[_currentIndex + 1],
+                                  isFront: false,
+                                ),
+                              ),
+                            ),
+                          if (_isLoadingMore)
+                            const Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Padding(
+                                padding: EdgeInsets.only(bottom: 32.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                        ],
+                      ),
+          ),
+          // Action buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildActionButton(
+                  icon: Icons.close,
+                  color: Colors.red,
+                  onTap: _onSwipeLeft,
+                ),
+                _buildActionButton(
+                  icon: Icons.favorite,
+                  color: Colors.green,
+                  onTap: _onSwipeRight,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildActionButton({
     required IconData icon,
