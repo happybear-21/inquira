@@ -63,19 +63,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _initHiveAndLoad() async {
     try {
-      _favoritesBox = await Hive.openBox<ArxivPaper>('favorites');
+      if (!Hive.isBoxOpen('favorites')) {
+        _favoritesBox = await Hive.openBox<ArxivPaper>('favorites');
+      } else {
+        _favoritesBox = Hive.box<ArxivPaper>('favorites');
+      }
+      
+      print('[Hive] Favorites box opened successfully');
+      print('[Hive] Current favorites count: ${_favoritesBox.length}');
+      
+      // Log all favorites for debugging
+      for (var i = 0; i < _favoritesBox.length; i++) {
+        final paper = _favoritesBox.getAt(i);
+        if (paper != null) {
+          print('[Hive] Favorite $i: ${paper.id} | ${paper.title}');
+        }
+      }
+      
       setState(() {
         _isFavoritesBoxReady = true;
       });
+      
       _loadPapers();
-    } catch (e) {
-      print('Error opening favorites box: $e');
+    } catch (e, stackTrace) {
+      print('[Hive] Error initializing favorites box: $e');
+      print('[Hive] Stack trace: $stackTrace');
       setState(() {
         _isFavoritesBoxReady = false;
       });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error initializing favorites: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-
 
   @override
   void dispose() {
@@ -121,21 +147,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
       return;
     }
+
     final paper = _papers[_currentIndex];
     bool added = false;
     String? error;
-    if (!_favoritesBox.values.any((fav) => fav.id == paper.id)) {
-      try {
+
+    try {
+      print('[Hive] Attempting to add paper to favorites: ${paper.id} | ${paper.title}');
+      
+      // Check if paper already exists in favorites
+      final existingPapers = _favoritesBox.values.where((fav) => fav.id == paper.id);
+      if (existingPapers.isEmpty) {
         await _favoritesBox.add(paper);
         added = true;
-        print('Added to favorites: ${paper.title}');
-      } catch (e) {
-        error = e.toString();
-        print('Error adding to favorites: $error');
+        print('[Hive] Successfully added to favorites: ${paper.id} | ${paper.title}');
+        print('[Hive] Current favorites count: ${_favoritesBox.length}');
+      } else {
+        print('[Hive] Paper already in favorites: ${paper.id} | ${paper.title}');
       }
-    } else {
-      print('Already in favorites: ${paper.title}');
+    } catch (e, stackTrace) {
+      error = e.toString();
+      print('[Hive] Error adding to favorites: $error');
+      print('[Hive] Stack trace: $stackTrace');
     }
+
     _runSwipeAnimation(1, () {
       setState(() {
         _currentIndex++;
@@ -222,124 +257,126 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     'Inquira',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
+                    ),
                   ),
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
-                      tooltip: 'Favorites',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const FavoritesScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                        tooltip: 'Favorites',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const FavoritesScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.settings),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: (!_isFavoritesBoxReady)
-                ? const Center(child: CircularProgressIndicator())
-                : _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Stack(
-                        children: [
-                          // Card stack and swipe UI
-                          if (_currentIndex < _papers.length)
-                            Align(
-                              alignment: Alignment.topCenter,
-                              child: GestureDetector(
-                                onHorizontalDragEnd: (details) {
-                                  if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
-                                    _onSwipeRight();
-                                  } else if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
-                                    _onSwipeLeft();
-                                  }
-                                },
-                                child: (_slideAnimation != null && _animationController != null)
-                                    ? SlideTransition(
-                                        position: _slideAnimation!,
-                                        child: Opacity(
-                                          opacity: 1.0, // Ensure top card is fully opaque
+            Expanded(
+              child: (!_isFavoritesBoxReady)
+                  ? const Center(child: CircularProgressIndicator())
+                  : _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : Stack(
+                          children: [
+                            // Card stack and swipe UI
+                            if (_currentIndex < _papers.length)
+                              Align(
+                                alignment: Alignment.topCenter,
+                                child: GestureDetector(
+                                  onHorizontalDragEnd: (details) {
+                                    if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
+                                      _onSwipeRight();
+                                    } else if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
+                                      _onSwipeLeft();
+                                    }
+                                  },
+                                  child: (_slideAnimation != null && _animationController != null)
+                                      ? SlideTransition(
+                                          position: _slideAnimation!,
+                                          child: Opacity(
+                                            opacity: 1.0, // Ensure top card is fully opaque
+                                            child: PaperCard(
+                                              paper: _papers[_currentIndex],
+                                              isFront: true,
+                                            ),
+                                          ),
+                                        )
+                                      : Opacity(
+                                          opacity: 1.0,
                                           child: PaperCard(
                                             paper: _papers[_currentIndex],
                                             isFront: true,
                                           ),
                                         ),
-                                      )
-                                    : Opacity(
-                                        opacity: 1.0,
-                                        child: PaperCard(
-                                          paper: _papers[_currentIndex],
-                                          isFront: true,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          if (_currentIndex + 1 < _papers.length)
-                            Align(
-                              alignment: Alignment.topCenter,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 20.0),
-                                child: PaperCard(
-                                  paper: _papers[_currentIndex + 1],
-                                  isFront: false,
                                 ),
                               ),
-                            ),
-                          if (_isLoadingMore)
-                            const Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding: EdgeInsets.only(bottom: 32.0),
-                                child: CircularProgressIndicator(),
+                            if (_currentIndex + 1 < _papers.length)
+                              Align(
+                                alignment: Alignment.topCenter,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 20.0),
+                                  child: PaperCard(
+                                    paper: _papers[_currentIndex + 1],
+                                    isFront: false,
+                                  ),
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-          ),
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildActionButton(
-                  icon: Icons.close,
-                  color: Colors.red,
-                  onTap: _onSwipeLeft,
-                ),
-                _buildActionButton(
-                  icon: Icons.favorite,
-                  color: Colors.green,
-                  onTap: _onSwipeRight,
-                ),
-              ],
+                            if (_isLoadingMore)
+                              const Align(
+                                alignment: Alignment.bottomCenter,
+                                child: Padding(
+                                  padding: EdgeInsets.only(bottom: 32.0),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                          ],
+                        ),
             ),
-          ),
-        ],
+            // Action buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.close,
+                    color: Colors.red,
+                    onTap: _onSwipeLeft,
+                  ),
+                  _buildActionButton(
+                    icon: Icons.favorite,
+                    color: Colors.green,
+                    onTap: _onSwipeRight,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildActionButton({
     required IconData icon,

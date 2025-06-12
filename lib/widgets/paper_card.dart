@@ -15,6 +15,7 @@ class PaperCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 500, // Fixed height for the card
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -41,6 +42,7 @@ class PaperCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -83,13 +85,15 @@ class PaperCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  paper.abstract,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text(
+                      paper.abstract,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
