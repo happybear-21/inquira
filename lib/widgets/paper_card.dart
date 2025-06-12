@@ -23,16 +23,20 @@ class PaperCard extends StatefulWidget {
 class _PaperCardState extends State<PaperCard> {
   Future<void> _launchUrl(String url) async {
     try {
-      final Uri uri = Uri.parse(url);
+      final uri = Uri.parse(url);
       if (!await launchUrl(
         uri,
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.platformDefault,
       )) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not open the paper. Please try again.'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Text('Could not open the paper URL'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -41,8 +45,12 @@ class _PaperCardState extends State<PaperCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening the paper: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            content: Text('Error opening URL: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -51,20 +59,30 @@ class _PaperCardState extends State<PaperCard> {
 
   Future<void> _sharePaper() async {
     try {
-      final String shareText = '${widget.paper.title}\n\n'
-          'Authors: ${widget.paper.authors.join(", ")}\n\n'
-          'Read the paper here: ${widget.paper.pdfUrl}';
-      
+      final shareText = '''
+Title: ${widget.paper.title}
+
+Authors: ${_formatAuthors(widget.paper.authors)}
+
+Abstract: ${widget.paper.abstract}
+
+Read the paper here: ${widget.paper.pdfUrl}
+''';
+
       await Share.share(
         shareText,
-        subject: widget.paper.title,
+        subject: 'Check out this research paper: ${widget.paper.title}',
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error sharing paper: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
