@@ -60,18 +60,20 @@ class _PaperCardState extends State<PaperCard> {
   Future<void> _sharePaper() async {
     try {
       final shareText = '''
-Title: ${widget.paper.title}
+📄 Research Paper
 
-Authors: ${_formatAuthors(widget.paper.authors)}
+📌 Title: ${_cleanText(widget.paper.title)}
 
-Abstract: ${widget.paper.abstract}
+👥 Authors: ${_formatAuthors(widget.paper.authors)}
 
-Read the paper here: ${widget.paper.pdfUrl}
+📝 Abstract: ${_cleanText(widget.paper.abstract)}
+
+🔗 Read the paper here: ${widget.paper.pdfUrl}
 ''';
 
       await Share.share(
         shareText,
-        subject: 'Check out this research paper: ${widget.paper.title}',
+        subject: 'Check out this research paper: ${_cleanText(widget.paper.title)}',
       );
     } catch (e) {
       if (mounted) {
