@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:another_flushbar/flushbar.dart';
 import '../models/arxiv_paper.dart';
 import '../widgets/paper_card.dart';
 
@@ -13,36 +14,107 @@ class FavoritesScreen extends StatefulWidget {
 class _FavoritesScreenState extends State<FavoritesScreen> {
   late Box<ArxivPaper> _favoritesBox;
   bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _initFavoritesBox();
+    _initHive();
   }
 
-  Future<void> _initFavoritesBox() async {
+  Future<void> _initHive() async {
     try {
       if (!Hive.isBoxOpen('favorites')) {
         _favoritesBox = await Hive.openBox<ArxivPaper>('favorites');
       } else {
         _favoritesBox = Hive.box<ArxivPaper>('favorites');
       }
-      
-      print('[FavoritesScreen] Favorites box opened successfully');
-      print('[FavoritesScreen] Current favorites count: ${_favoritesBox.length}');
-      
       setState(() {
         _isLoading = false;
       });
-    } catch (e, stackTrace) {
-      print('[FavoritesScreen] Error initializing favorites box: $e');
-      print('[FavoritesScreen] Stack trace: $stackTrace');
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+    } catch (e) {
+      print('Error initializing favorites: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading favorites: ${e.toString()}')),
+        );
+      }
     }
+  }
+
+  Future<void> _removeFromFavorites(ArxivPaper paper) async {
+    try {
+      final index = _favoritesBox.values.toList().indexWhere((p) => p.id == paper.id);
+      if (index != -1) {
+        await _favoritesBox.deleteAt(index);
+        setState(() {});
+        _showCustomToast(
+          context,
+          'Removed from favorites',
+          icon: Icons.delete_outline,
+          color: Colors.red,
+        );
+      }
+    } catch (e) {
+      print('Error removing from favorites: $e');
+      _showCustomToast(
+        context,
+        'Error removing from favorites',
+        icon: Icons.error,
+        color: Colors.red,
+      );
+    }
+  }
+
+  Future<bool> _showDeleteConfirmation(ArxivPaper paper) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove from Favorites?'),
+        content: Text('Are you sure you want to remove "${paper.title}" from your favorites?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _removeFromFavorites(paper);
+      return true;
+    }
+    return false;
+  }
+
+  void _showCustomToast(BuildContext context, String message, {required IconData icon, required Color color}) {
+    Flushbar(
+      margin: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(16),
+      backgroundColor: color.withOpacity(0.95),
+      icon: Icon(icon, color: Colors.white, size: 28),
+      messageText: Text(
+        message,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      duration: const Duration(milliseconds: 1200),
+      flushbarPosition: FlushbarPosition.TOP,
+      animationDuration: const Duration(milliseconds: 400),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ).show(context);
   }
 
   @override
@@ -53,66 +125,67 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
+          : _favoritesBox.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      Icon(
+                        Icons.favorite_border,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                      ),
                       const SizedBox(height: 16),
                       Text(
-                        'Error loading favorites',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        'No favorites yet',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                            ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _error!,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _initFavoritesBox,
-                        child: const Text('Retry'),
+                        'Swipe right on papers to add them to favorites',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                            ),
                       ),
                     ],
                   ),
                 )
-              : _favoritesBox.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.favorite_border,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No favorites yet',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Swipe right on papers to add them to your favorites',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _favoritesBox.length,
+                  itemBuilder: (context, index) {
+                    final paper = _favoritesBox.getAt(index);
+                    if (paper == null) return const SizedBox.shrink();
+                    return Dismissible(
+                      key: Key(paper.id),
+                      direction: DismissDirection.endToStart,
+                      confirmDismiss: (direction) async {
+                        return await _showDeleteConfirmation(paper);
+                      },
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _favoritesBox.length,
-                      itemBuilder: (context, index) {
-                        final paper = _favoritesBox.getAt(index);
-                        if (paper == null) return const SizedBox.shrink();
-                        return PaperCard(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: PaperCard(
                           paper: paper,
                           isCompact: true,
-                        );
-                      },
-                    ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
