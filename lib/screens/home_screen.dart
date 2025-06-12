@@ -81,12 +81,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _onSwipeRight() async {
+  void _onSwipeRight() {
     if (_currentIndex < _papers.length) {
       // Save to favorites
       final paper = _papers[_currentIndex];
       if (!_favoritesBox.values.any((fav) => fav.id == paper.id)) {
-        await _favoritesBox.add(paper);
+        _favoritesBox.add(paper);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Added to favorites!')),
         );
@@ -172,46 +172,67 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ? const Center(
                           child: Text('No papers available'),
                         )
-                      : Stack(
-                          children: [
-                            // Show up to 3 stacked cards for Instagram/Tinder feel
-                            for (int i = 0; i < 3; i++)
-                              if (_currentIndex + i < _papers.length)
-                                Positioned.fill(
-                                  child: Transform.translate(
-                                    offset: Offset(20.0 * i, 20.0 * i),
-                                    child: i == 0
-                                        ? GestureDetector(
-                                            onHorizontalDragEnd: (details) {
-                                              if (details.primaryVelocity! > 0) {
-                                                _onSwipeRight();
-                                              } else if (details.primaryVelocity! < 0) {
-                                                _onSwipeLeft();
-                                              }
-                                            },
-                                            child: SlideTransition(
-                                              position: _slideAnimation,
-                                              child: PaperCard(
-                                                paper: _papers[_currentIndex],
-                                              ),
-                                            ),
-                                          )
-                                        : Opacity(
-                                            opacity: 0.7 - 0.2 * i,
-                                            child: PaperCard(
-                                              paper: _papers[_currentIndex + i],
-                                            ),
-                                          ),
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Only show two cards: the top (front) and the next (back)
+                              if (_currentIndex + 1 < _papers.length)
+                                AnimatedPositioned(
+                                  duration: const Duration(milliseconds: 350),
+                                  curve: Curves.easeOut,
+                                  top: 30,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: AnimatedScale(
+                                    duration: const Duration(milliseconds: 350),
+                                    scale: 0.92,
+                                    curve: Curves.easeOut,
+                                    child: PaperCard(
+                                      paper: _papers[_currentIndex + 1],
+                                      isFront: false,
+                                    ),
                                   ),
                                 ),
-                            if (_isLoadingMore)
-                              const Positioned(
-                                bottom: 16,
-                                left: 0,
-                                right: 0,
-                                child: Center(child: CircularProgressIndicator()),
-                              ),
-                          ],
+                              if (_currentIndex < _papers.length)
+                                AnimatedPositioned(
+                                  duration: const Duration(milliseconds: 350),
+                                  curve: Curves.easeOut,
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: GestureDetector(
+                                    onHorizontalDragEnd: (details) {
+                                      if (details.primaryVelocity! > 0) {
+                                        _onSwipeRight();
+                                      } else if (details.primaryVelocity! < 0) {
+                                        _onSwipeLeft();
+                                      }
+                                    },
+                                    child: SlideTransition(
+                                      position: _slideAnimation,
+                                      child: Opacity(
+                                        opacity: 1.0, // Ensure top card is fully opaque
+                                        child: PaperCard(
+                                          paper: _papers[_currentIndex],
+                                          isFront: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (_isLoadingMore)
+                                const Positioned(
+                                  bottom: 16,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(child: CircularProgressIndicator()),
+                                ),
+                            ],
+                          ),
                         ),
             ),
             Padding(
@@ -222,12 +243,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   _buildActionButton(
                     icon: Icons.close,
                     color: Colors.red,
-                    onTap: _onSwipeLeft,
+                    onTap: () {
+                      _onSwipeLeft();
+                    },
                   ),
                   _buildActionButton(
                     icon: Icons.favorite,
                     color: Colors.green,
-                    onTap: _onSwipeRight,
+                    onTap: () {
+                      _onSwipeRight();
+                    },
                   ),
                 ],
               ),
