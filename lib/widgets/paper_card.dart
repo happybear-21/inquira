@@ -5,17 +5,83 @@ import '../models/arxiv_paper.dart';
 class PaperCard extends StatelessWidget {
   final ArxivPaper paper;
   final bool isFront;
+  final bool isCompact;
 
   const PaperCard({
     super.key,
     required this.paper,
     this.isFront = true,
+    this.isCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isCompact) {
+      return _buildCompactCard(context);
+    }
+    return _buildFullCard(context);
+  }
+
+  Widget _buildCompactCard(BuildContext context) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              paper.title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Authors: ${paper.authors.join(", ")}',
+              style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DateFormat('MMM d, y').format(paper.publishedDate),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.share),
+                      label: const Text('Share'),
+                      onPressed: () {
+                        // TODO: Implement share functionality
+                      },
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        // TODO: Show full paper details
+                      },
+                      child: const Text('Read More'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullCard(BuildContext context) {
     return Container(
-      height: 500, // Fixed height for the card
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -42,7 +108,6 @@ class PaperCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -53,7 +118,7 @@ class PaperCard extends StatelessWidget {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 4),
                 Wrap(
                   spacing: 8,
                   children: [
@@ -77,23 +142,23 @@ class PaperCard extends StatelessWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 4),
                 Text(
                   'Authors: ${paper.authors.join(", ")}',
                   style: Theme.of(context).textTheme.bodyMedium,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Expanded(
                   child: SingleChildScrollView(
                     child: Text(
-                      paper.abstract,
+                      paper.abstract.replaceAll(RegExp(r'\s+'), ' ').trim(),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -101,11 +166,23 @@ class PaperCard extends StatelessWidget {
                       DateFormat('MMM d, y').format(paper.publishedDate),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        // TODO: Open PDF
-                      },
-                      child: const Text('Read Paper'),
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          icon: const Icon(Icons.share),
+                          label: const Text('Share'),
+                          onPressed: () {
+                            // TODO: Implement share functionality
+                          },
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.article),
+                          label: const Text('Read Paper'),
+                          onPressed: () {
+                            // TODO: Open PDF
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

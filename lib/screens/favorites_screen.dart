@@ -107,9 +107,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       itemBuilder: (context, index) {
                         final paper = _favoritesBox.getAt(index);
                         if (paper == null) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                          child: PaperCard(paper: paper),
+                        return PaperCard(
+                          paper: paper,
+                          isCompact: true,
                         );
                       },
                     ),

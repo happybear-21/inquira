@@ -297,60 +297,72 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ? const Center(child: CircularProgressIndicator())
                   : _isLoading
                       ? const Center(child: CircularProgressIndicator())
-                      : Stack(
-                          children: [
-                            // Card stack and swipe UI
-                            if (_currentIndex < _papers.length)
-                              Align(
-                                alignment: Alignment.topCenter,
-                                child: GestureDetector(
-                                  onHorizontalDragEnd: (details) {
-                                    if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
-                                      _onSwipeRight();
-                                    } else if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
-                                      _onSwipeLeft();
-                                    }
-                                  },
-                                  child: (_slideAnimation != null && _animationController != null)
-                                      ? SlideTransition(
-                                          position: _slideAnimation!,
-                                          child: Opacity(
-                                            opacity: 1.0, // Ensure top card is fully opaque
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Stack(
+                            children: [
+                              // Card stack and swipe UI
+                              if (_currentIndex < _papers.length)
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: GestureDetector(
+                                    onHorizontalDragEnd: (details) {
+                                      if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
+                                        _onSwipeRight();
+                                      } else if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
+                                        _onSwipeLeft();
+                                      }
+                                    },
+                                    child: (_slideAnimation != null && _animationController != null)
+                                        ? SlideTransition(
+                                            position: _slideAnimation!,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).scaffoldBackgroundColor,
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                              child: PaperCard(
+                                                paper: _papers[_currentIndex],
+                                                isFront: true,
+                                              ),
+                                            ),
+                                          )
+                                        : Container(
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context).scaffoldBackgroundColor,
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
                                             child: PaperCard(
                                               paper: _papers[_currentIndex],
                                               isFront: true,
                                             ),
                                           ),
-                                        )
-                                      : Opacity(
-                                          opacity: 1.0,
-                                          child: PaperCard(
-                                            paper: _papers[_currentIndex],
-                                            isFront: true,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            if (_currentIndex + 1 < _papers.length)
-                              Align(
-                                alignment: Alignment.topCenter,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 20.0),
-                                  child: PaperCard(
-                                    paper: _papers[_currentIndex + 1],
-                                    isFront: false,
                                   ),
                                 ),
-                              ),
-                            if (_isLoadingMore)
-                              const Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Padding(
-                                  padding: EdgeInsets.only(bottom: 32.0),
-                                  child: CircularProgressIndicator(),
+                              if (_currentIndex + 1 < _papers.length)
+                                Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 20.0),
+                                    child: Opacity(
+                                      opacity: 0.0, // Make the back card completely invisible
+                                      child: PaperCard(
+                                        paper: _papers[_currentIndex + 1],
+                                        isFront: false,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                          ],
+                              if (_isLoadingMore)
+                                const Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(bottom: 32.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
             ),
             // Action buttons
