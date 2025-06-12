@@ -1,11 +1,23 @@
-class ArxivPaper {
+import 'package:hive/hive.dart';
+part 'arxiv_paper.g.dart';
+
+@HiveType(typeId: 1)
+class ArxivPaper extends HiveObject {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String title;
+  @HiveField(2)
   final List<String> authors;
+  @HiveField(3)
   final String abstract;
+  @HiveField(4)
   final String pdfUrl;
+  @HiveField(5)
   final DateTime publishedDate;
+  @HiveField(6)
   final List<String> categories;
+  @HiveField(7)
   final String primaryCategory;
 
   ArxivPaper({
@@ -35,4 +47,4 @@ class ArxivPaper {
       primaryCategory: entry['arxiv:primary_category']['@term'] as String,
     );
   }
-} 
+}
