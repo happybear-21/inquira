@@ -1,3 +1,3 @@
-# inquira
+# Inquira
 
 A new Flutter project.
