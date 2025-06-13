@@ -3,7 +3,7 @@ import 'package:xml/xml.dart';
 import '../models/arxiv_paper.dart';
 
 class ArxivService {
-  static const String _baseUrl = 'http://export.arxiv.org/api/query';
+  static const String _baseUrl = 'https://export.arxiv.org/api/query';
 
   Future<List<ArxivPaper>> searchPapers({
     String searchQuery = 'cat:cs.AI',
@@ -19,6 +19,7 @@ class ArxivService {
     };
 
     final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
+    print('Fetching papers from: $uri'); // Debug print
     final response = await http.get(uri);
 
     if (response.statusCode == 200) {
@@ -67,9 +68,11 @@ class ArxivService {
           print('Error parsing paper: $e');
         }
       }
+      print('Successfully fetched ${papers.length} papers'); // Debug print
       return papers;
     } else {
-      throw Exception('Failed to load papers');
+      print('Error fetching papers: ${response.statusCode} - ${response.body}'); // Debug print
+      throw Exception('Failed to load papers: ${response.statusCode}');
     }
   }
 }
