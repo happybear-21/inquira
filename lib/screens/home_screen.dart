@@ -7,6 +7,7 @@ import '../services/arxiv_service.dart';
 import '../widgets/paper_card.dart';
 import 'settings_screen.dart';
 import 'favorites_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -150,6 +151,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   Row(
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SearchScreen(),
+                            ),
+                          );
+                        },
+                      ),
                       IconButton(
                         icon: const Icon(Icons.favorite, color: Colors.pinkAccent),
                         tooltip: 'Favorites',

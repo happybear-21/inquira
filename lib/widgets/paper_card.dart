@@ -8,12 +8,16 @@ class PaperCard extends StatefulWidget {
   final ArxivPaper paper;
   final bool isFront;
   final bool isCompact;
+  final VoidCallback? onFavoriteToggle;
+  final bool isFavorite;
 
   const PaperCard({
     super.key,
     required this.paper,
     this.isFront = true,
     this.isCompact = false,
+    this.onFavoriteToggle,
+    this.isFavorite = false,
   });
 
   @override
@@ -148,6 +152,15 @@ class _PaperCardState extends State<PaperCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (widget.onFavoriteToggle != null)
+                  TextButton.icon(
+                    icon: Icon(
+                      widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: widget.isFavorite ? Colors.pinkAccent : null,
+                    ),
+                    label: Text(widget.isFavorite ? 'Saved' : 'Save'),
+                    onPressed: widget.onFavoriteToggle,
+                  ),
                 TextButton.icon(
                   icon: const Icon(Icons.share),
                   label: const Text('Share'),
@@ -222,6 +235,15 @@ class _PaperCardState extends State<PaperCard> {
                 ),
                 Row(
                   children: [
+                    if (widget.onFavoriteToggle != null)
+                      TextButton.icon(
+                        icon: Icon(
+                          widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: widget.isFavorite ? Colors.pinkAccent : null,
+                        ),
+                        label: Text(widget.isFavorite ? 'Saved' : 'Save'),
+                        onPressed: widget.onFavoriteToggle,
+                      ),
                     TextButton.icon(
                       icon: const Icon(Icons.share),
                       label: const Text('Share'),
