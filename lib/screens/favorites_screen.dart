@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:another_flushbar/flushbar.dart';
 import '../models/arxiv_paper.dart';
 import '../widgets/paper_card.dart';
 
@@ -47,21 +46,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       if (index != -1) {
         await _favoritesBox.deleteAt(index);
         setState(() {});
-        _showCustomToast(
-          context,
-          'Removed from favorites',
-          icon: Icons.delete_outline,
-          color: Colors.red,
-        );
       }
     } catch (e) {
       print('Error removing from favorites: $e');
-      _showCustomToast(
-        context,
-        'Error removing from favorites',
-        icon: Icons.error,
-        color: Colors.red,
-      );
     }
   }
 
@@ -108,58 +95,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     if (result == true) {
       try {
         await _removeFromFavorites(paper);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Removed "${paper.title}" from favorites'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        }
         return true;
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to remove paper: ${e.toString()}'),
-              backgroundColor: Theme.of(context).colorScheme.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        }
         return false;
       }
     }
     return false;
-  }
-
-  void _showCustomToast(BuildContext context, String message, {required IconData icon, required Color color}) {
-    Flushbar(
-      margin: const EdgeInsets.all(16),
-      borderRadius: BorderRadius.circular(16),
-      backgroundColor: color.withOpacity(0.95),
-      icon: Icon(icon, color: Colors.white, size: 28),
-      messageText: Text(
-        message,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-      ),
-      duration: const Duration(milliseconds: 1200),
-      flushbarPosition: FlushbarPosition.TOP,
-      animationDuration: const Duration(milliseconds: 400),
-      boxShadows: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ).show(context);
   }
 
   @override

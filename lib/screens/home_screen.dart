@@ -95,75 +95,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _onSwipeRight(int index) async {
     if (!_isFavoritesBoxReady) {
-      _showCustomToast(
-        context,
-        'Favorites not ready',
-        icon: Icons.error,
-        color: Colors.red,
-      );
       return;
     }
 
     final paper = _papers[index];
-    bool added = false;
-    String? error;
-
     try {
       print('[Hive] Attempting to add paper to favorites: ${paper.id} | ${paper.title}');
       
       final existingPapers = _favoritesBox.values.where((fav) => fav.id == paper.id);
       if (existingPapers.isEmpty) {
         await _favoritesBox.add(paper);
-        added = true;
         print('[Hive] Successfully added to favorites: ${paper.id} | ${paper.title}');
         print('[Hive] Current favorites count: ${_favoritesBox.length}');
       } else {
         print('[Hive] Paper already in favorites: ${paper.id} | ${paper.title}');
       }
     } catch (e, stackTrace) {
-      error = e.toString();
-      print('[Hive] Error adding to favorites: $error');
+      print('[Hive] Error adding to favorites: $e');
       print('[Hive] Stack trace: $stackTrace');
     }
-
-    _showCustomToast(
-      context,
-      error != null ? 'Error adding to favorites' : (added ? 'Added to favorites!' : 'Already in favorites'),
-      icon: error != null ? Icons.error : Icons.favorite,
-      color: error != null ? Colors.red : Colors.green,
-    );
   }
 
   void _onSwipeLeft(int index) {
-    _showCustomToast(
-      context,
-      'Skipped',
-      icon: Icons.close,
-      color: Colors.red,
-    );
-  }
-
-  void _showCustomToast(BuildContext context, String message, {required IconData icon, required Color color}) {
-    Flushbar(
-      margin: const EdgeInsets.all(16),
-      borderRadius: BorderRadius.circular(16),
-      backgroundColor: color.withOpacity(0.95),
-      icon: Icon(icon, color: Colors.white, size: 28),
-      messageText: Text(
-        message,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-      ),
-      duration: const Duration(milliseconds: 1200),
-      flushbarPosition: FlushbarPosition.TOP,
-      animationDuration: const Duration(milliseconds: 400),
-      boxShadows: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ).show(context);
+    // No action needed for left swipe
   }
 
   void _maybeLoadMore() {
@@ -254,14 +208,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   backCardOffset: const Offset(0, 20),
                                   padding: const EdgeInsets.all(8.0),
                                   cardBuilder: (context, index, horizontalThresholdPercentage, verticalThresholdPercentage) {
+                                    Color tintColor = Colors.transparent;
+                                    
+                                    if (horizontalThresholdPercentage != null) {
+                                      if (horizontalThresholdPercentage > 0.1) {
+                                        // Swiping right - green tint
+                                        tintColor = Colors.green.withOpacity(0.3);
+                                      } else if (horizontalThresholdPercentage < -0.1) {
+                                        // Swiping left - red tint
+                                        tintColor = Colors.red.withOpacity(0.3);
+                                      }
+                                    }
+                                    
                                     return Container(
                                       decoration: BoxDecoration(
                                         color: Theme.of(context).scaffoldBackgroundColor,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                                      child: PaperCard(
-                                        paper: _papers[index],
-                                        isFront: true,
+                                      child: Stack(
+                                        children: [
+                                          PaperCard(
+                                            paper: _papers[index],
+                                            isFront: true,
+                                          ),
+                                          if (tintColor != Colors.transparent)
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: tintColor,
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     );
                                   },
