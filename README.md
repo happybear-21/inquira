@@ -1,3 +1,3 @@
 # Inquira
 
-A new Flutter project.
+Swipe Into Knowledge

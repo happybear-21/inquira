@@ -26,20 +26,6 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const Divider(),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('About'),
-            onTap: () {
-              // TODO: Show about dialog
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Privacy Policy'),
-            onTap: () {
-              // TODO: Show privacy policy
-            },
-          ),
         ],
       ),
     );
